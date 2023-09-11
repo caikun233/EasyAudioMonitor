@@ -21,7 +21,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller
+        pip install pyinstaller numpy sounddevice
 
     - name: Build EXE
       run: |
