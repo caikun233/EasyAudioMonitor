@@ -1,0 +1,34 @@
+name: PyBuild EXE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller
+
+    - name: Build EXE
+      run: |
+        pyinstaller --onefile EasySoundMonitor.py
+
+    - name: Upload EXE
+      uses: actions/upload-artifact@v2
+      with:
+        name: EasySoundMonitor_Windows_x64
+        path: ./dist/EasySoundMonitor.exe
