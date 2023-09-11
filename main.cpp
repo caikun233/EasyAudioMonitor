@@ -1,69 +1,66 @@
 #include <iostream>
 #include <vector>
-#include <portaudio.h>
+#include <Windows.h>
+#include <mmsystem.h>
 
-// 定义麦克风和耳机的参数
-const int microphoneDevice = 1;  // 选择正确的麦克风设备（可以使用PortAudio的Pa_GetDeviceInfo函数来查看可用设备）
-const int headphoneDevice = 2;   // 选择正确的耳机设备
+#pragma comment(lib, "winmm.lib")
 
-const int sampleRate = 48000;   // 采样率（可以根据需要进行调整）
-const int bufferSize = 512;    // 缓冲区大小（可以根据需要进行调整）
-
-// 回调函数来处理音频数据
-static int audioCallback(const void *inputBuffer, void *outputBuffer,
-                        unsigned long framesPerBuffer,
-                        const PaStreamCallbackTimeInfo *timeInfo,
-                        PaStreamCallbackFlags statusFlags,
-                        void *userData) {
-    float *in = (float *)inputBuffer;
-    float *out = (float *)outputBuffer;
-    (void)timeInfo;  // 未使用的参数
-
-    for (unsigned int i = 0; i < framesPerBuffer; i++) {
-        *out++ = *in++;  // 将麦克风输入数据直接传输到耳机
-    }
-
-    return paContinue;
-}
+// 音频缓冲区大小
+const int BUFFER_SIZE = 4096;
 
 int main() {
-    PaError err;
+    // 打开默认的音频输入设备（麦克风）
+    HWAVEIN hWaveIn;
+    WAVEFORMATEX wfx;
+    wfx.wFormatTag = WAVE_FORMAT_PCM;
+    wfx.nChannels = 2;                // 立体声输入
+    wfx.nSamplesPerSec = 44100;       // 采样率
+    wfx.wBitsPerSample = 16;          // 16位每样本
+    wfx.nBlockAlign = (wfx.nChannels * wfx.wBitsPerSample) / 8;
+    wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
+    wfx.cbSize = 0;
 
-    err = Pa_Initialize();
-    if (err != paNoError) {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
+    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio input device." << std::endl;
         return 1;
     }
 
-    PaStream *stream;
-    err = Pa_OpenDefaultStream(&stream, 1, 1, paFloat32, sampleRate, bufferSize, audioCallback, nullptr);
-    if (err != paNoError) {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
+    // 打开默认的音频输出设备（扬声器）
+    HWAVEOUT hWaveOut;
+    if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio output device." << std::endl;
+        waveInClose(hWaveIn);
         return 1;
     }
 
-    err = Pa_StartStream(stream);
-    if (err != paNoError) {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-        return 1;
-    }
+    // 初始化音频输入缓冲区
+    WAVEHDR waveHdr;
+    waveHdr.lpData = (LPSTR)malloc(BUFFER_SIZE);
+    waveHdr.dwBufferLength = BUFFER_SIZE;
+    waveHdr.dwBytesRecorded = 0;
+    waveHdr.dwUser = 0;
+    waveHdr.dwFlags = 0;
+    waveHdr.dwLoops = 0;
+    waveInPrepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
+    waveInAddBuffer(hWaveIn, &waveHdr, sizeof(WAVEHDR));
 
-    std::cout << "实时监听中，请按Ctrl+C来停止..." << std::endl;
-    while (true) {
-        Pa_Sleep(1000);  // 在此处休眠以允许继续监听
-    }
+    // 开始音频输入和输出
+    waveInStart(hWaveIn);
+    waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
 
-    err = Pa_StopStream(stream);
-    if (err != paNoError) {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-    }
+    std::cout << "Listening to audio (Press Enter to stop)..." << std::endl;
+    std::cin.get();
 
-    err = Pa_CloseStream(stream);
-    if (err != paNoError) {
-        std::cerr << "PortAudio error: " << Pa_GetErrorText(err) << std::endl;
-    }
+    // 停止音频输入和输出
+    waveInStop(hWaveIn);
+    waveInReset(hWaveIn);
+    waveOutReset(hWaveOut);
 
-    Pa_Terminate();
+    // 关闭设备并释放资源
+    waveInUnprepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
+    waveInClose(hWaveIn);
+    waveOutClose(hWaveOut);
+    free(waveHdr.lpData);
 
     return 0;
 }
