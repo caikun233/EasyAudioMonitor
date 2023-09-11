@@ -11,7 +11,12 @@ const int NUM_BUFFERS = 2;
 void CALLBACK waveOutProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
     if (uMsg == WOM_DONE) {
         WAVEHDR* waveHdr = (WAVEHDR*)dwParam1;
-        waveOutWrite(hwo, waveHdr, sizeof(WAVEHDR));
+        MMRESULT result = waveOutWrite(hwo, waveHdr, sizeof(WAVEHDR));
+        if (result != MMSYSERR_NOERROR) {
+            std::cerr << "Failed to write audio output. Error code: " << result << std::endl;
+        } else {
+            std::cout << "Audio output written successfully." << std::endl;
+        }
     }
 }
 
@@ -29,13 +34,15 @@ int main() {
     wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
     wfx.cbSize = 0;
 
-    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to open audio input device." << std::endl;
+    MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT);
+    if (result != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio input device. Error code: " << result << std::endl;
         return 1;
     }
 
-    if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, (DWORD_PTR)waveOutProc, 0, CALLBACK_FUNCTION) != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to open audio output device." << std::endl;
+    result = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, (DWORD_PTR)waveOutProc, 0, CALLBACK_FUNCTION);
+    if (result != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio output device. Error code: " << result << std::endl;
         waveInClose(hWaveIn);
         return 1;
     }
@@ -51,7 +58,11 @@ int main() {
         waveInAddBuffer(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
     }
 
-    waveInStart(hWaveIn);
+    result = waveInStart(hWaveIn);
+    if (result != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to start audio input. Error code: " << result << std::endl;
+        return 1;
+    }
 
     std::cout << "Listening to audio (Press Enter to stop)..." << std::endl;
     std::cin.get();
