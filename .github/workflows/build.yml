@@ -14,7 +14,8 @@ jobs:
       uses: actions/checkout@v2  # 检出代码
 
     - name: Set up MSVC
-      uses: msvc-actions/setup-msvc@v2  # 设置MSVC编译环境
+      uses: actions/setup-msvc@v2  # 设置MSVC编译环境
+
 
     - name: Configure CMake
       run: cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 16 2019"
