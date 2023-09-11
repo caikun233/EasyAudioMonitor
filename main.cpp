@@ -8,12 +8,6 @@
 // 音频缓冲区大小
 const int BUFFER_SIZE = 4096;
 
-void printError(const char* msg, MMRESULT error) {
-    char errorMsg[MAXERRORLENGTH];
-    waveInGetErrorTextA(error, errorMsg, MAXERRORLENGTH);
-    std::cerr << msg << " Error code: " << error << " - " << errorMsg << std::endl;
-}
-
 int main() {
     // 打开默认的音频输入设备（麦克风）
     HWAVEIN hWaveIn;
@@ -26,9 +20,8 @@ int main() {
     wfxIn.nAvgBytesPerSec = wfxIn.nSamplesPerSec * wfxIn.nBlockAlign;
     wfxIn.cbSize = 0;
 
-    MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &wfxIn, 0, 0, WAVE_FORMAT_DIRECT);
-    if (result != MMSYSERR_NOERROR) {
-        printError("Failed to open audio input device.", result);
+    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfxIn, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio input device." << std::endl;
         return 1;
     } else {
         std::cout << "Audio input device opened successfully." << std::endl;
@@ -45,9 +38,8 @@ int main() {
     wfxOut.nAvgBytesPerSec = wfxOut.nSamplesPerSec * wfxOut.nBlockAlign;
     wfxOut.cbSize = 0;
 
-    result = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfxOut, 0, 0, WAVE_FORMAT_DIRECT);
-    if (result != MMSYSERR_NOERROR) {
-        printError("Failed to open audio output device.", result);
+    if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfxOut, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio output device." << std::endl;
         waveInClose(hWaveIn);
         return 1;
     } else {
@@ -67,11 +59,9 @@ int main() {
 
     // 开始音频输入和输出
     waveInStart(hWaveIn);
-    result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+    MMRESULT result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
     if (result != MMSYSERR_NOERROR) {
-        printError("Failed to write audio output.", result);
-    } else {
-        std::cout << "Audio output written successfully." << std::endl;
+        std::cerr << "Failed to write audio output. Error code: " << result << std::endl;
     }
 
     std::cout << "Listening to audio (Press Enter to stop)..." << std::endl;
