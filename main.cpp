@@ -1,17 +1,29 @@
 #include <iostream>
-#include <vector>
 #include <Windows.h>
 #include <mmsystem.h>
 
 #pragma comment(lib, "winmm.lib")
 
-// 音频缓冲区大小
 const int BUFFER_SIZE = 4096;
+const int NUM_BUFFERS = 3;
+
+void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
+    if (uMsg == WIM_DATA) {
+        std::cout << "Received audio data. Writing to output..." << std::endl;
+        MMRESULT result = waveOutWrite((HWAVEOUT)dwInstance, (WAVEHDR*)dwParam1, sizeof(WAVEHDR));
+        if (result != MMSYSERR_NOERROR) {
+            std::cerr << "Failed to write audio output. Error code: " << result << std::endl;
+        }
+    }
+}
 
 int main() {
-    // 打开默认的音频输入设备（麦克风）
     HWAVEIN hWaveIn;
-    WAVEFORMATEX wfxIn;
+    HWAVEOUT hWaveOut;
+    WAVEFORMATEX wfxIn, wfxOut;
+    WAVEHDR waveHdr[NUM_BUFFERS];
+
+    // Input format
     wfxIn.wFormatTag = WAVE_FORMAT_PCM;
     wfxIn.nChannels = 1;
     wfxIn.nSamplesPerSec = 48000;
@@ -20,16 +32,7 @@ int main() {
     wfxIn.nAvgBytesPerSec = wfxIn.nSamplesPerSec * wfxIn.nBlockAlign;
     wfxIn.cbSize = 0;
 
-    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfxIn, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to open audio input device." << std::endl;
-        return 1;
-    } else {
-        std::cout << "Audio input device opened successfully." << std::endl;
-    }
-
-    // 打开默认的音频输出设备（扬声器）
-    HWAVEOUT hWaveOut;
-    WAVEFORMATEX wfxOut;
+    // Output format
     wfxOut.wFormatTag = WAVE_FORMAT_PCM;
     wfxOut.nChannels = 1;
     wfxOut.nSamplesPerSec = 48000;
@@ -38,45 +41,43 @@ int main() {
     wfxOut.nAvgBytesPerSec = wfxOut.nSamplesPerSec * wfxOut.nBlockAlign;
     wfxOut.cbSize = 0;
 
+    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfxIn, (DWORD_PTR)waveInProc, (DWORD_PTR)&hWaveOut, CALLBACK_FUNCTION) != MMSYSERR_NOERROR) {
+        std::cerr << "Failed to open audio input device." << std::endl;
+        return 1;
+    }
+    std::cout << "Audio input device opened successfully." << std::endl;
+
     if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfxOut, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
         std::cerr << "Failed to open audio output device." << std::endl;
         waveInClose(hWaveIn);
         return 1;
-    } else {
-        std::cout << "Audio output device opened successfully." << std::endl;
+    }
+    std::cout << "Audio output device opened successfully." << std::endl;
+
+    for (int i = 0; i < NUM_BUFFERS; ++i) {
+        waveHdr[i].lpData = (LPSTR)malloc(BUFFER_SIZE);
+        waveHdr[i].dwBufferLength = BUFFER_SIZE;
+        waveHdr[i].dwFlags = 0;
+        waveInPrepareHeader(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
+        waveInAddBuffer(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
     }
 
-    // 初始化音频输入缓冲区
-    WAVEHDR waveHdr;
-    waveHdr.lpData = (LPSTR)malloc(BUFFER_SIZE);
-    waveHdr.dwBufferLength = BUFFER_SIZE;
-    waveHdr.dwBytesRecorded = 0;
-    waveHdr.dwUser = 0;
-    waveHdr.dwFlags = 0;
-    waveHdr.dwLoops = 0;
-    waveInPrepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
-    waveInAddBuffer(hWaveIn, &waveHdr, sizeof(WAVEHDR));
-
-    // 开始音频输入和输出
     waveInStart(hWaveIn);
-    MMRESULT result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
-    if (result != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to write audio output. Error code: " << result << std::endl;
-    }
 
     std::cout << "Listening to audio (Press Enter to stop)..." << std::endl;
     std::cin.get();
 
-    // 停止音频输入和输出
     waveInStop(hWaveIn);
     waveInReset(hWaveIn);
     waveOutReset(hWaveOut);
 
-    // 关闭设备并释放资源
-    waveInUnprepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
+    for (int i = 0; i < NUM_BUFFERS; ++i) {
+        waveInUnprepareHeader(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
+        free(waveHdr[i].lpData);
+    }
+
     waveInClose(hWaveIn);
     waveOutClose(hWaveOut);
-    free(waveHdr.lpData);
 
     return 0;
 }
