@@ -22,11 +22,11 @@ jobs:
 
     - name: Build C++ Program
       run: |
-        g++ -o my_audio_program.exe main.cpp -lportaudio  # 编译程序并指定输出文件为 .exe
-        chmod +x my_audio_program.exe  # 使程序可执行
+        g++ -o EasyAudioMonitor.exe main.cpp -lportaudio  # 编译程序并指定输出文件为 .exe
+        chmod +x EasyAudioMonitor.exe  # 使程序可执行
     
     - name: Upload exe
       uses: actions/upload-artifact@v2
       with:
-        name: my_audio_program  # 上传编译后的程序
-        path: ./my_audio_program.exe  # 指定 .exe 文件路径
+        name: EasyAudioMonitor.exe  # 上传编译后的程序
+        path: ./EasyAudioMonitor.exe.exe  # 指定 .exe 文件路径
