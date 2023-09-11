@@ -13,9 +13,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2  # 检出代码
 
-    - name: Install MSVC
-      uses: microsoft/setup-msvc@v2  # 安装 MSVC 编译工具
-
     - name: Install PortAudio
       run: |
         choco install portaudio  # 使用 Chocolatey 安装 PortAudio
@@ -24,9 +21,9 @@ jobs:
       run: |
         g++ -o EasyAudioMonitor.exe main.cpp -lportaudio  # 编译程序并指定输出文件为 .exe
         chmod +x EasyAudioMonitor.exe  # 使程序可执行
-    
+
     - name: Upload exe
       uses: actions/upload-artifact@v2
       with:
-        name: EasyAudioMonitor.exe  # 上传编译后的程序
-        path: ./EasyAudioMonitor.exe.exe  # 指定 .exe 文件路径
+        name: EasyAudioMonitor  # 上传编译后的程序
+        path: ./EasyAudioMonitor.exe  # 指定 .exe 文件路径
