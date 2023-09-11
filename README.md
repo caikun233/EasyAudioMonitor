@@ -7,3 +7,4 @@
 
 #### Only easiest monitor in early version of this repo.
 
+[![PyBuild EXE](https://github.com/caikun233/EasySoundMonitor/actions/workflows/pybuild.yml/badge.svg)](https://github.com/caikun233/EasySoundMonitor/actions/workflows/pybuild.yml)
