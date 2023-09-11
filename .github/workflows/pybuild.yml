@@ -25,7 +25,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller -F -w -i fvcon.ico EasySoundMonitor.py
+        pyinstaller -F -i fvcon.ico EasySoundMonitor.py
 
     - name: Upload EXE
       uses: actions/upload-artifact@v2
