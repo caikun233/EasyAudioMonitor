@@ -15,7 +15,7 @@ int main() {
     wfxIn.wFormatTag = WAVE_FORMAT_PCM;
     wfxIn.nChannels = 1;
     wfxIn.nSamplesPerSec = 48000;
-    wfxIn.wBitsPerSample = 24;
+    wfxIn.wBitsPerSample = 16;
     wfxIn.nBlockAlign = (wfxIn.nChannels * wfxIn.wBitsPerSample) / 8;
     wfxIn.nAvgBytesPerSec = wfxIn.nSamplesPerSec * wfxIn.nBlockAlign;
     wfxIn.cbSize = 0;
@@ -31,7 +31,7 @@ int main() {
     HWAVEOUT hWaveOut;
     WAVEFORMATEX wfxOut;
     wfxOut.wFormatTag = WAVE_FORMAT_PCM;
-    wfxOut.nChannels = 2;
+    wfxOut.nChannels = 1;
     wfxOut.nSamplesPerSec = 48000;
     wfxOut.wBitsPerSample = 16;
     wfxOut.nBlockAlign = (wfxOut.nChannels * wfxOut.wBitsPerSample) / 8;
