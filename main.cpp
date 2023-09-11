@@ -1,83 +1,87 @@
 #include <iostream>
+#include <vector>
 #include <Windows.h>
 #include <mmsystem.h>
 
 #pragma comment(lib, "winmm.lib")
 
 const int BUFFER_SIZE = 4096;
-const int NUM_BUFFERS = 3;
 
-void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
-    if (uMsg == WIM_DATA) {
-        std::cout << "Received audio data. Writing to output..." << std::endl;
-        MMRESULT result = waveOutWrite((HWAVEOUT)dwInstance, (WAVEHDR*)dwParam1, sizeof(WAVEHDR));
-        if (result != MMSYSERR_NOERROR) {
-            std::cerr << "Failed to write audio output. Error code: " << result << std::endl;
-        } else {
-            std::cout << "Audio data written to output successfully." << std::endl;
-        }
+void checkError(MMRESULT result, const char* errorMessage) {
+    if (result != MMSYSERR_NOERROR) {
+        char errorText[128];
+        waveInGetErrorText(result, errorText, sizeof(errorText));
+        std::cerr << errorMessage << " Error code: " << result << " - " << errorText << std::endl;
     }
 }
 
 int main() {
     HWAVEIN hWaveIn;
-    HWAVEOUT hWaveOut;
     WAVEFORMATEX wfx;
-    WAVEHDR waveHdr[NUM_BUFFERS];
-
     wfx.wFormatTag = WAVE_FORMAT_PCM;
     wfx.nChannels = 1;
     wfx.nSamplesPerSec = 48000;
-    wfx.wBitsPerSample = 16;
+    wfx.wBitsPerSample = 24;
     wfx.nBlockAlign = (wfx.nChannels * wfx.wBitsPerSample) / 8;
     wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
     wfx.cbSize = 0;
 
-    if (waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, (DWORD_PTR)waveInProc, (DWORD_PTR)&hWaveOut, CALLBACK_FUNCTION) != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to open audio input device." << std::endl;
-        return 1;
-    }
+    MMRESULT result = waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT);
+    checkError(result, "Failed to open audio input device.");
+    if (result != MMSYSERR_NOERROR) return 1;
+
     std::cout << "Audio input device opened successfully." << std::endl;
 
-    if (waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, WAVE_FORMAT_DIRECT) != MMSYSERR_NOERROR) {
-        std::cerr << "Failed to open audio output device." << std::endl;
+    HWAVEOUT hWaveOut;
+    WAVEFORMATEX wfxOut = wfx;
+    wfxOut.nChannels = 2;
+    wfxOut.wBitsPerSample = 16;
+    wfxOut.nBlockAlign = (wfxOut.nChannels * wfxOut.wBitsPerSample) / 8;
+    wfxOut.nAvgBytesPerSec = wfxOut.nSamplesPerSec * wfxOut.nBlockAlign;
+
+    result = waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfxOut, 0, 0, WAVE_FORMAT_DIRECT);
+    checkError(result, "Failed to open audio output device.");
+    if (result != MMSYSERR_NOERROR) {
         waveInClose(hWaveIn);
         return 1;
     }
+
     std::cout << "Audio output device opened successfully." << std::endl;
 
-    for (int i = 0; i < NUM_BUFFERS; ++i) {
-        waveHdr[i].lpData = (LPSTR)malloc(BUFFER_SIZE);
-        waveHdr[i].dwBufferLength = BUFFER_SIZE;
-        waveHdr[i].dwFlags = 0;
-        MMRESULT result = waveInPrepareHeader(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
-        if (result != MMSYSERR_NOERROR) {
-            std::cerr << "Failed to prepare input buffer. Error code: " << result << std::endl;
-            return 1;
-        }
-        result = waveInAddBuffer(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
-        if (result != MMSYSERR_NOERROR) {
-            std::cerr << "Failed to add input buffer. Error code: " << result << std::endl;
-            return 1;
-        }
-    }
+    WAVEHDR waveHdr;
+    waveHdr.lpData = (LPSTR)malloc(BUFFER_SIZE);
+    waveHdr.dwBufferLength = BUFFER_SIZE;
+    waveHdr.dwBytesRecorded = 0;
+    waveHdr.dwUser = 0;
+    waveHdr.dwFlags = 0;
+    waveHdr.dwLoops = 0;
+
+    waveInPrepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
+    waveInAddBuffer(hWaveIn, &waveHdr, sizeof(WAVEHDR));
 
     waveInStart(hWaveIn);
 
     std::cout << "Listening to audio (Press Enter to stop)..." << std::endl;
-    std::cin.get();
+
+    while (true) {
+        if (waveHdr.dwFlags & WHDR_DONE) {
+            std::cout << "Received audio data. Writing to output..." << std::endl;
+            result = waveOutWrite(hWaveOut, &waveHdr, sizeof(WAVEHDR));
+            checkError(result, "Failed to write audio output.");
+            waveInAddBuffer(hWaveIn, &waveHdr, sizeof(WAVEHDR));
+        }
+
+        if (GetAsyncKeyState(VK_RETURN)) break;
+    }
 
     waveInStop(hWaveIn);
     waveInReset(hWaveIn);
     waveOutReset(hWaveOut);
 
-    for (int i = 0; i < NUM_BUFFERS; ++i) {
-        waveInUnprepareHeader(hWaveIn, &waveHdr[i], sizeof(WAVEHDR));
-        free(waveHdr[i].lpData);
-    }
-
+    waveInUnprepareHeader(hWaveIn, &waveHdr, sizeof(WAVEHDR));
     waveInClose(hWaveIn);
     waveOutClose(hWaveOut);
+    free(waveHdr.lpData);
 
     return 0;
 }
