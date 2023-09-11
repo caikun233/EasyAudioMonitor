@@ -13,6 +13,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2  # 检出代码
 
+    - name: Configure Chocolatey
+      run: |
+        choco source add -n=custom -s="https://raw.githubusercontent.com/caikun233/EsayAudioMonitor/main/.github/chocolatey/config"
+
     - name: Install PortAudio
       run: |
         choco install portaudio  # 使用 Chocolatey 安装 PortAudio
