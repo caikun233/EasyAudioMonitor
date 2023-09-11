@@ -16,7 +16,6 @@ jobs:
     - name: Set up MSVC
       uses: actions/setup-msvc@v2  # 设置MSVC编译环境
 
-
     - name: Configure CMake
       run: cmake . -Bbuild -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 16 2019"
       working-directory: ${{ github.workspace }}
