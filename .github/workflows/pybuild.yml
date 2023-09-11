@@ -21,11 +21,11 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller
+        pip install pyinstaller sounddevice
 
     - name: Build EXE
       run: |
-        pyinstaller --onefile --hidden-import=sounddevice EasySoundMonitor.py
+        pyinstaller -F -w -i fvcon.ico EasySoundMonitor.py
 
     - name: Upload EXE
       uses: actions/upload-artifact@v2
