@@ -15,7 +15,7 @@ jobs:
 
     - name: Configure Chocolatey
       run: |
-        choco source add -n=custom -s="https://raw.githubusercontent.com/caikun233/EsayAudioMonitor/main/.github/chocolatey/config"
+        choco source add -n=custom -s="https://raw.githubusercontent.com/caikun233/EasyAudioMonitor/main/.github/chocolatey/config"
 
     - name: Install PortAudio
       run: |
